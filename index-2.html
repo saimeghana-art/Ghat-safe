@@ -1,0 +1,149 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>GHAT-SAFE | Blind-Curve Safety Simulator</title>
+<style>
+:root{--bg:#f3f6fa;--card:#fff;--ink:#172033;--muted:#64748b;--green:#16834a;--amber:#d97706;--red:#c62828;--blue:#175cd3}
+*{box-sizing:border-box}
+body{margin:0;font-family:Arial,Helvetica,sans-serif;background:var(--bg);color:var(--ink)}
+header{background:#173b2c;color:#fff;padding:22px 16px}
+header h1{margin:0 0 6px;font-size:28px;letter-spacing:.5px}
+header p{margin:0;color:#d8eee1}
+main{max-width:1000px;margin:18px auto;padding:0 14px}
+.notice{background:#fff7df;border:1px solid #f1d27a;border-radius:12px;padding:12px 14px;margin-bottom:14px;line-height:1.45}
+.grid{display:grid;grid-template-columns:1.3fr .7fr;gap:14px}
+.card{background:var(--card);border-radius:14px;padding:16px;box-shadow:0 2px 9px #14213d12;margin-bottom:14px}
+h2{font-size:19px;margin:0 0 13px}
+.road{position:relative;min-height:285px;border-radius:12px;background:#d9e5d7;overflow:hidden;padding:16px}
+.hill{position:absolute;width:190px;height:190px;border-radius:50%;background:#7b8b66;left:50%;top:48px;transform:translateX(-50%);border:10px solid #a8b58d}
+.roadline{position:absolute;left:0;right:0;top:135px;height:62px;background:#555b63;border-top:3px solid #fff;border-bottom:3px solid #fff}
+.roadline:after{content:"";position:absolute;left:0;right:0;top:28px;border-top:3px dashed #f8e6a0}
+.zone{position:absolute;top:118px;height:95px;width:25%;background:#fbbf2466;border:2px dashed #d97706}
+.zone.left{left:0}.zone.right{right:0}
+.conflict{position:absolute;left:40%;width:20%;top:118px;height:95px;background:#ef444455;border:2px solid #c62828}
+.car{position:absolute;top:145px;width:43px;height:25px;border-radius:7px;background:#2563eb;border:2px solid white;box-shadow:0 2px 4px #0005;z-index:2}
+.car:after{content:"";position:absolute;left:8px;right:8px;top:4px;height:7px;background:#dbeafe;border-radius:3px}
+.car.a{left:10%}.car.b{right:10%;background:#e11d48}
+.roadlabel{position:absolute;z-index:3;font-size:12px;font-weight:bold;background:#fff;padding:4px 6px;border-radius:5px}
+.labela{left:8px;top:12px}.labelb{right:8px;top:12px}.labelcenter{left:50%;bottom:12px;transform:translateX(-50%)}
+.controls{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+label{display:block;font-size:13px;color:var(--muted);margin-bottom:5px}
+select,input,button{font:inherit}
+select,input{width:100%;padding:10px;border:1px solid #cbd5e1;border-radius:8px;background:#fff}
+button{border:0;border-radius:9px;padding:11px 13px;cursor:pointer;font-weight:bold}
+.primary{background:var(--blue);color:white}.secondary{background:#e8eef7;color:#17324d}.danger{background:#fee2e2;color:#991b1b}
+.buttons{display:flex;gap:8px;flex-wrap:wrap;margin-top:12px}
+.status{border-radius:12px;padding:16px;text-align:center;color:#fff;font-weight:bold;font-size:19px;background:var(--green)}
+.status.warn{background:var(--amber)}.status.risk{background:var(--red)}
+.status small{display:block;font-size:12px;font-weight:normal;margin-top:6px}
+.kpis{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.kpi{padding:12px;border-radius:10px;background:#f1f5f9}
+.kpi strong{display:block;font-size:24px;margin-top:5px}
+.kpi span{font-size:12px;color:var(--muted)}
+.log{max-height:170px;overflow:auto;padding-left:18px;color:#475569;font-size:13px}
+footer{text-align:center;padding:14px;color:var(--muted);font-size:12px}
+@media(max-width:720px){.grid{grid-template-columns:1fr}.road{min-height:255px}.hill{width:155px;height:155px;top:52px}.controls{grid-template-columns:1fr 1fr}}
+</style>
+</head>
+<body>
+<header>
+  <h1>GHAT-SAFE</h1>
+  <p>Blind-Curve Warning System for Ghat Roads · Interactive software demonstration</p>
+</header>
+<main>
+  <div class="notice"><strong>Prototype notice:</strong> This browser demo simulates warning logic using sample vehicles. It does not access live GPS, CCTV, or real traffic. Do not use it as a real driving safety system.</div>
+  <div class="grid">
+    <section>
+      <div class="card">
+        <h2>Live Bend Simulator</h2>
+        <div class="road" aria-label="Illustration of a blind hairpin bend">
+          <span class="roadlabel labela">Approach A</span><span class="roadlabel labelb">Approach B</span>
+          <div class="hill"></div><div class="roadline"></div>
+          <div class="zone left"></div><div class="zone right"></div><div class="conflict"></div>
+          <div class="car a" id="carA"></div><div class="car b" id="carB"></div>
+          <span class="roadlabel labelcenter">Blind bend / conflict zone</span>
+        </div>
+        <div class="buttons">
+          <button class="primary" onclick="runSimulation()">Run scenario</button>
+          <button class="secondary" onclick="resetSimulation()">Reset</button>
+          <button class="secondary" onclick="speakAlert()">Repeat voice alert</button>
+        </div>
+      </div>
+      <div class="card">
+        <h2>Scenario controls</h2>
+        <div class="controls">
+          <div><label for="traffic">Oncoming vehicle</label><select id="traffic"><option value="clear">No oncoming vehicle</option><option value="ahead" selected>Vehicle in opposite zone</option><option value="risk">Vehicle inside blind bend</option></select></div>
+          <div><label for="weather">Road condition</label><select id="weather"><option>Clear</option><option>Rain / wet</option><option>Fog / night</option></select></div>
+          <div><label for="speed">Your speed (km/h)</label><input id="speed" type="number" min="0" max="100" value="35"></div>
+          <div><label for="advisory">Advisory speed (km/h)</label><input id="advisory" type="number" min="5" max="60" value="25"></div>
+        </div>
+      </div>
+    </section>
+    <aside>
+      <div class="card">
+        <h2>Driver warning</h2>
+        <div class="status warn" id="status">VEHICLE AHEAD — SLOW<small id="statusDetail">An oncoming vehicle may be approaching.</small></div>
+        <p id="voiceText">Voice alert: “Vehicle ahead — slow down.”</p>
+        <div class="kpis">
+          <div class="kpi"><span>Current speed</span><strong id="speedValue">35</strong><span>km/h</span></div>
+          <div class="kpi"><span>Advisory speed</span><strong id="advisoryValue">25</strong><span>km/h</span></div>
+          <div class="kpi"><span>Overspeed</span><strong id="overspeedValue">YES</strong></div>
+          <div class="kpi"><span>Logged events</span><strong id="eventCount">1</strong></div>
+        </div>
+      </div>
+      <div class="card">
+        <h2>Authority dashboard</h2>
+        <p><strong>Risk level:</strong> <span id="riskLevel">Medium</span></p>
+        <p><strong>Weather:</strong> <span id="weatherValue">Clear</span></p>
+        <p><strong>Detection method:</strong> Simulated zone occupancy</p>
+        <h2 style="margin-top:18px">Event log</h2>
+        <ul class="log" id="log"><li>Demo started — vehicle detected in opposite approach zone.</li></ul>
+      </div>
+    </aside>
+  </div>
+</main>
+<footer>GHAT-SAFE · Civil Engineering project prototype · Team CE Endeavours</footer>
+<script>
+let events=1;
+function addLog(message){const li=document.createElement('li');li.textContent=new Date().toLocaleTimeString()+' — '+message;document.getElementById('log').prepend(li);events++;document.getElementById('eventCount').textContent=events;}
+function runSimulation(){
+ const traffic=document.getElementById('traffic').value;
+ const weather=document.getElementById('weather').value;
+ const speed=Math.max(0,Number(document.getElementById('speed').value)||0);
+ const advisory=Math.max(5,Number(document.getElementById('advisory').value)||25);
+ const status=document.getElementById('status');
+ let title,detail,voice,risk;
+ if(traffic==='clear'){title='CLEAR — DRIVE CAREFULLY';detail='No vehicle detected in the opposite approach zone.';voice='Clear bend. Drive carefully.';risk='Low';status.className='status';}
+ else if(traffic==='ahead'){title='VEHICLE AHEAD — SLOW';detail='An oncoming vehicle is in the opposite approach zone.';voice='Vehicle ahead. Slow down.';risk='Medium';status.className='status warn';}
+ else{title='HEAD-ON RISK — HOLD LEFT';detail='A vehicle is inside the blind-bend conflict zone. Slow down and keep left.';voice='Head-on risk. Slow down and keep left.';risk='High';status.className='status risk';}
+ const over=speed>advisory+5;
+ if(over){voice+=' You are above the advisory speed. Slow down.';}
+ if(weather!=='Clear'){detail+=' Conditions: '+weather.toLowerCase()+'.';}
+ document.getElementById('status').firstChild.textContent=title;
+ document.getElementById('statusDetail').textContent=detail;
+ document.getElementById('voiceText').textContent='Voice alert: “'+voice+'”';
+ document.getElementById('speedValue').textContent=speed;
+ document.getElementById('advisoryValue').textContent=advisory;
+ document.getElementById('overspeedValue').textContent=over?'YES':'NO';
+ document.getElementById('riskLevel').textContent=over&&risk==='Low'?'Medium':risk;
+ document.getElementById('weatherValue').textContent=weather;
+ document.getElementById('carA').style.left=traffic==='clear'?'10%':traffic==='ahead'?'31%':'43%';
+ document.getElementById('carB').style.right=traffic==='clear'?'10%':traffic==='ahead'?'31%':'43%';
+ addLog(title+(over?' · overspeed detected':'')+' · '+weather);
+}
+function resetSimulation(){
+ document.getElementById('traffic').value='clear';document.getElementById('weather').value='Clear';
+ document.getElementById('speed').value=20;document.getElementById('advisory').value=25;
+ runSimulation();
+}
+function speakAlert(){
+ const text=document.getElementById('voiceText').textContent.replace('Voice alert: ','').replace(/[“”]/g,'');
+ if('speechSynthesis' in window){window.speechSynthesis.cancel();const msg=new SpeechSynthesisUtterance(text);msg.lang='en-IN';window.speechSynthesis.speak(msg);}
+ else{alert(text);}
+}
+runSimulation();
+</script>
+</body>
+</html>
